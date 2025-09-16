@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "850743178434",
+    "project_id": "complaint-box-6fb15",
+    "storage_bucket": "complaint-box-6fb15.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:850743178434:android:676ac5a7f6766787e2f75b",
+        "android_client_info": {
+          "package_name": "com.example.complaint_box"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBW2Y2eGKEESV3YxInmgk-OEmrzzpO1_os"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
