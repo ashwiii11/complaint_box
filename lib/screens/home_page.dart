@@ -26,7 +26,9 @@ class _HomePageState extends State<HomePage> {
     final uid = _authSvc.currentUser?.uid;
     if (uid == null) return;
     final snap = await FirebaseFirestore.instance.collection('admins').doc(uid).get();
-    setState(() { _isAdmin = snap.exists; });
+    setState(() {
+      _isAdmin = snap.exists;
+    });
   }
 
   @override
@@ -46,14 +48,41 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('Welcome ${user?.isAnonymous == true ? "Guest" : user?.email ?? ''}'),
-          const SizedBox(height: 12),
-          ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ComplaintForm())), child: const Text('Write Complaint')),
-          ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ComplaintHistory())), child: const Text('My Complaints')),
-          if (_isAdmin)
-            ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminDashboard())), child: const Text('Admin Dashboard')),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Welcome ${user?.isAnonymous == true ? "Guest" : user?.email ?? ''}'),
+            const SizedBox(height: 12),
+
+            // ✅ Removed const
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ComplaintForm()),
+              ),
+              child: const Text('Write Complaint'),
+            ),
+
+            // ✅ Removed const
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ComplaintHistory()),
+              ),
+              child: const Text('My Complaints'),
+            ),
+
+            if (_isAdmin)
+              // ✅ Removed const
+              ElevatedButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => AdminDashboard()),
+                ),
+                child: const Text('Admin Dashboard'),
+              ),
+          ],
+        ),
       ),
     );
   }
