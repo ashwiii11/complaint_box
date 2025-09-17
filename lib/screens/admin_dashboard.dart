@@ -3,15 +3,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/db_service.dart';
 
 class AdminDashboard extends StatelessWidget {
-  const AdminDashboard({super.key});
-  final DBService _db = const DBService();
+  AdminDashboard({super.key});
+
+  final DBService _db = DBService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Admin Dashboard')),
       body: StreamBuilder<QuerySnapshot>(
-        stream: DBService().allComplaintsStream(),
+        stream: _db.allComplaintsStream(),
         builder: (context, snap) {
           if (!snap.hasData) return const Center(child: CircularProgressIndicator());
           final docs = snap.data!.docs;
@@ -24,9 +25,9 @@ class AdminDashboard extends StatelessWidget {
                 trailing: PopupMenuButton<String>(
                   onSelected: (v) {
                     if (v == 'resolve') {
-                      DBService().updateComplaint(doc.id, {'status': 'resolved'});
+                      _db.updateComplaint(doc.id, {'status': 'resolved'});
                     } else if (v == 'pending') {
-                      DBService().updateComplaint(doc.id, {'status': 'pending'});
+                      _db.updateComplaint(doc.id, {'status': 'pending'});
                     }
                   },
                   itemBuilder: (_) => [
