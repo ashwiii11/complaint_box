@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';  // ✅ Firestore import
 import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -37,10 +38,23 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _register() async {
     setState(() => _loading = true);
     try {
-      await _auth.createUserWithEmailAndPassword(
+      // ✅ Create user in Firebase Auth
+      final userCredential = await _auth.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      final uid = userCredential.user?.uid;
+
+      // ✅ Save extra details in Firestore
+      if (uid != null) {
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'email': _emailController.text.trim(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'role': 'student', // default role
+        });
+      }
+
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -90,7 +104,18 @@ class _LoginPageState extends State<LoginPage> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                  await _auth.signInAnonymously();
+                  final userCred = await _auth.signInAnonymously();
+                  final uid = userCred.user?.uid;
+
+                  // ✅ Save guest profile in Firestore
+                  if (uid != null) {
+                    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+                      'email': 'guest',
+                      'createdAt': FieldValue.serverTimestamp(),
+                      'role': 'guest',
+                    });
+                  }
+
                   if (!mounted) return;
                   Navigator.pushReplacement(
                     context,
