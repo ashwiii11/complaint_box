@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';  // ✅ Firestore import
 import 'home_page.dart';
+import 'admin_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,55 +20,71 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
 
   Future<void> _login() async {
-    setState(() => _loading = true);
-    try {
-      await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
-      );
-    } on FirebaseAuthException catch (e) {
-      _showError(e.message ?? "Login failed");
-    } finally {
-      setState(() => _loading = false);
+  setState(() => _loading = true);
+  try {
+    final cred = await _auth.signInWithEmailAndPassword(
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
+
+    // Fetch role from Firestore
+    final uid = cred.user!.uid;
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+    if (!mounted) return;
+
+    if (doc.exists) {
+      final role = doc['role'];
+
+      if (role == 'admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminPage()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      }
+    } else {
+      _showError("No user role found");
     }
+  } on FirebaseAuthException catch (e) {
+    _showError(e.message ?? "Login failed");
+  } finally {
+    setState(() => _loading = false);
   }
+}
+
 
   Future<void> _register() async {
-    setState(() => _loading = true);
-    try {
-      // ✅ Create user in Firebase Auth
-      final userCredential = await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+  setState(() => _loading = true);
+  try {
+    final cred = await _auth.createUserWithEmailAndPassword(
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
 
-      final uid = userCredential.user?.uid;
+    // Save user info in Firestore
+    await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).set({
+      'email': cred.user!.email,
+      'createdAt': FieldValue.serverTimestamp(),
+      'role': 'user', // default role
+    });
 
-      // ✅ Save extra details in Firestore
-      if (uid != null) {
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
-          'email': _emailController.text.trim(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'role': 'student', // default role
-        });
-      }
-
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
-      );
-    } on FirebaseAuthException catch (e) {
-      _showError(e.message ?? "Register failed");
-    } finally {
-      setState(() => _loading = false);
-    }
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomePage()),
+    );
+  } on FirebaseAuthException catch (e) {
+    _showError(e.message ?? "Register failed");
+  } finally {
+    setState(() => _loading = false);
   }
+}
+
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
