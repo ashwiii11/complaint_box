@@ -15,7 +15,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _authSvc = AuthService();
-  bool _isAdmin = false;
+  bool _isAdmin = false;  
   bool _loading = true;
 
   @override

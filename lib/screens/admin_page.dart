@@ -30,7 +30,7 @@ class AdminPage extends StatelessWidget {
           if (complaints.isEmpty) {
             return const Center(
               child: Text(
-                "No complaints found 🚫",
+                "No complaints found ",
                 style: TextStyle(fontSize: 18),
               ),
             );
@@ -45,6 +45,8 @@ class AdminPage extends StatelessWidget {
               final text = data['text'] ?? 'No description';
               final category = data['category'] ?? 'Uncategorized';
               final status = data['status'] ?? 'Pending';
+              final isAnonymous = data['isAnonymous'] ?? false;
+              final userEmail = data['userEmail'] ?? "Unknown User";
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -54,7 +56,23 @@ class AdminPage extends StatelessWidget {
                     text,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text("Category: $category\nStatus: $status"),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Category: $category"),
+                      Text("Status: $status"),
+                      const SizedBox(height: 4),
+                      isAnonymous
+                          ? const Text(
+                              "Posted anonymously",
+                              style: TextStyle(color: Colors.grey),
+                            )
+                          : Text(
+                              "User: $userEmail",
+                              style: const TextStyle(color: Colors.blueGrey),
+                            ),
+                    ],
+                  ),
                   trailing: PopupMenuButton<String>(
                     onSelected: (value) {
                       _updateStatus(doc.id, value);

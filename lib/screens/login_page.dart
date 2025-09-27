@@ -19,36 +19,36 @@ class _LoginPageState extends State<LoginPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _loading = false;
 
-  Future<void> _login() async {
+Future<void> _login() async {
   setState(() => _loading = true);
   try {
-    final cred = await _auth.signInWithEmailAndPassword(
+    final userCred = await _auth.signInWithEmailAndPassword(
       email: _emailController.text.trim(),
       password: _passwordController.text.trim(),
     );
 
-    // Fetch role from Firestore
-    final uid = cred.user!.uid;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final uid = userCred.user!.uid;
 
-    if (!mounted) return;
+    // 🔍 Check if user is admin
+    final adminSnap = await FirebaseFirestore.instance
+        .collection('admins')
+        .doc(uid)
+        .get();
 
-    if (doc.exists) {
-      final role = doc['role'];
-
-      if (role == 'admin') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const AdminPage()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
-      }
+    if (adminSnap.exists) {
+      // Navigate to AdminPage
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminPage()),
+      );
     } else {
-      _showError("No user role found");
+      //  Navigate to HomePage
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
     }
   } on FirebaseAuthException catch (e) {
     _showError(e.message ?? "Login failed");
@@ -126,7 +126,7 @@ class _LoginPageState extends State<LoginPage> {
                   final userCred = await _auth.signInAnonymously();
                   final uid = userCred.user?.uid;
 
-                  // ✅ Save guest profile in Firestore
+                  // Save guest profile in Firestore
                   if (uid != null) {
                     await FirebaseFirestore.instance.collection('users').doc(uid).set({
                       'email': 'guest',
