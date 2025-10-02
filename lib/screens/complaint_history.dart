@@ -12,7 +12,7 @@ class ComplaintHistory extends StatelessWidget {
 
     if (uid == null) {
       return const Scaffold(
-        body: Center(child: Text("Not logged in ")),
+        body: Center(child: Text("Not logged in")),
       );
     }
 
@@ -21,8 +21,8 @@ class ComplaintHistory extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
             .collection('complaints')
-            .where('userId', isEqualTo: uid) 
-            .orderBy('createdAt', descending: true)
+            .where('userId', isEqualTo: uid) // ✅ always filter by uid
+            .orderBy('timestamp', descending: true) // ✅ match field name
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -38,9 +38,32 @@ class ComplaintHistory extends StatelessWidget {
             itemCount: complaints.length,
             itemBuilder: (context, index) {
               final data = complaints[index].data();
-              return ListTile(
-                title: Text(data['text'] ?? 'No text'),
-                subtitle: Text("Status: ${data['status'] ?? 'Pending'}"),
+
+              final text = data['text'] ?? 'No text';
+              final category = data['category'] ?? 'General';
+              final status = data['status'] ?? 'Pending';
+              final adminReply = data['adminReply'];
+              final isAnon = data['isAnonymous'] ?? false;
+
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: ListTile(
+                  title: Text(
+                    text,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Category: $category"),
+                      Text("Status: $status"),
+                      if (adminReply != null && adminReply.toString().trim().isNotEmpty)
+                        Text("Admin reply: $adminReply"),
+                      if (isAnon) const Text("(Submitted Anonymously)",
+                          style: TextStyle(fontStyle: FontStyle.italic)),
+                    ],
+                  ),
+                ),
               );
             },
           );

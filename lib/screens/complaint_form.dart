@@ -22,32 +22,53 @@ class _ComplaintFormState extends State<ComplaintForm> {
   Future<void> _submit() async {
     final user = _auth.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please sign in first')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in first')),
+      );
       return;
     }
-    setState(() { _submitting = true; });
+
+    if (_textCtl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Complaint text cannot be empty')),
+      );
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+    });
 
     final uid = user.uid;
-    final email = user.isAnonymous ? null : user.email;
+    final email = user.email;
 
     try {
       await _db.addComplaint({
-        'userId': _isAnonymous ? 'anonymous' : uid,
-        'userEmail': _isAnonymous ? null : email,
-        'category': _category,
-        'text': _textCtl.text.trim(),
-        'isAnonymous': _isAnonymous,
-        'status': 'pending',
-        'adminReply': null,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+  'userId': _isAnonymous ? 'anonymous' : uid,
+  'userEmail': _isAnonymous ? null : email,
+  'category': _category,
+  'text': _textCtl.text.trim(),
+  'isAnonymous': _isAnonymous,
+  'status': 'pending',
+  'adminReply': null,
+  'createdAt': DateTime.now(),  //reliable client timestamp
+  'serverTime': FieldValue.serverTimestamp(), //accurate server time
+});
+
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Complaint submitted')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Complaint submitted')),
+      );
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     } finally {
-      setState(() { _submitting = false; });
+      setState(() {
+        _submitting = false;
+      });
     }
   }
 
@@ -57,23 +78,44 @@ class _ComplaintFormState extends State<ComplaintForm> {
       appBar: AppBar(title: const Text('New Complaint')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(children: [
-          DropdownButtonFormField<String>(
-            value: _category,
-            items: ['Teacher','Hostel','Canteen','Library','Other']
-              .map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-            onChanged: (v) => setState(() { _category = v!; }),
-            decoration: const InputDecoration(labelText: 'Category'),
-          ),
-          const SizedBox(height: 12),
-          TextField(controller: _textCtl, maxLines: 6, decoration: const InputDecoration(labelText: 'Write your complaint')),
-          Row(children: [
-            Checkbox(value: _isAnonymous, onChanged: (v) => setState(() { _isAnonymous = v ?? false; })),
-            const Text('Submit anonymously'),
-          ]),
-          const SizedBox(height: 12),
-          ElevatedButton(onPressed: _submitting ? null : _submit, child: _submitting ? const CircularProgressIndicator() : const Text('Submit Complaint'))
-        ]),
+        child: Column(
+          children: [
+            DropdownButtonFormField<String>(
+              value: _category,
+              items: ['Teacher', 'Hostel', 'Canteen', 'Library', 'Other']
+                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  .toList(),
+              onChanged: (v) => setState(() {
+                _category = v!;
+              }),
+              decoration: const InputDecoration(labelText: 'Category'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _textCtl,
+              maxLines: 6,
+              decoration:
+                  const InputDecoration(labelText: 'Write your complaint'),
+            ),
+            Row(
+              children: [
+                Checkbox(
+                  value: _isAnonymous,
+                  onChanged: (v) =>
+                      setState(() => _isAnonymous = v ?? false),
+                ),
+                const Text('Submit anonymously'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: _submitting ? null : _submit,
+              child: _submitting
+                  ? const CircularProgressIndicator()
+                  : const Text('Submit Complaint'),
+            )
+          ],
+        ),
       ),
     );
   }

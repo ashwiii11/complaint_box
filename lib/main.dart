@@ -1,12 +1,11 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'firebase_options.dart';
 import 'screens/login_page.dart';
 import 'screens/home_page.dart';
-import 'screens/admin_page.dart'; 
+import 'screens/admin_dashboard.dart'; // make sure this import is here
+import 'package:cloud_firestore/cloud_firestore.dart'; // needed for FutureBuilder
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +23,31 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Complaint Box',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue),
+
+      // ✅ GLOBAL THEME
+      theme: ThemeData(
+        scaffoldBackgroundColor: const Color(0xFFF5F5DC), // beige
+        primaryColor: const Color(0xFFA0522D), // light brown
+        colorScheme: ColorScheme.fromSwatch().copyWith(
+          primary: const Color(0xFFA0522D), // light brown
+          secondary: const Color(0xFFD2B48C), // tan accent (optional)
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFA0522D), // light brown
+          foregroundColor: Colors.white,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFA0522D), // light brown
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(12)),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+          ),
+        ),
+      ),
+
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -36,17 +59,20 @@ class MyApp extends StatelessWidget {
           }
 
           final user = snapshot.data!;
-          return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-            future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+          return FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get(),
             builder: (context, snap) {
               if (!snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final data = snap.data?.data();
+              final data = snap.data?.data() as Map<String, dynamic>?;
               final role = data?['role'] ?? 'user';
 
               if (role == 'admin') {
-                return const AdminPage(); 
+                return AdminDashboard();
               } else {
                 return const HomePage();
               }
