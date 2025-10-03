@@ -12,12 +12,9 @@ class ComplaintHistory extends StatelessWidget {
 
     if (uid == null) {
       return const Scaffold(
-        body: Center(child: Text("Not logged in")),
+        body: Center(child: Text("Not logged in ❌")),
       );
     }
-
-    // DEBUG: print uid to console
-    print(' ComplaintHistory for uid: $uid');
 
     return Scaffold(
       appBar: AppBar(title: const Text("My Complaints")),
@@ -25,53 +22,36 @@ class ComplaintHistory extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('complaints')
             .where('userId', isEqualTo: uid)
-            .orderBy('createdAt', descending: true) // use client ms timestamp
+            .orderBy('createdAt', descending: true) // ✅ unified field
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            print(' Snapshot error: ${snapshot.error}');
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
-          final docs = snapshot.data?.docs ?? [];
-          // debug print:
-          print('complaint snapshot count: ${docs.length}');
-          if (docs.isEmpty) {
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(child: Text("No complaints yet."));
           }
 
+          final complaints = snapshot.data!.docs;
+
           return ListView.builder(
-            itemCount: docs.length,
+            itemCount: complaints.length,
             itemBuilder: (context, index) {
-              final data = docs[index].data();
-              final text = data['text'] ?? 'No text';
-              final category = data['category'] ?? 'General';
-              final status = data['status'] ?? 'Pending';
-              final isAnon = data['isAnonymous'] ?? false;
-              final adminReply = data['adminReply'];
-              final createdMs = data['createdAtMs'];
-              String timeStr = '';
-              if (createdMs is int) {
-                final dt = DateTime.fromMillisecondsSinceEpoch(createdMs);
-                timeStr = '${dt.year}-${dt.month.toString().padLeft(2,'0')}-${dt.day.toString().padLeft(2,'0')} ${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}';
-              }
+              final data = complaints[index].data();
+              final timestamp = data['createdAt'] as Timestamp?;
+              final date = timestamp != null
+                  ? DateTime.fromMillisecondsSinceEpoch(
+                      timestamp.millisecondsSinceEpoch)
+                  : null;
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: ListTile(
-                  title: Text(isAnon ? 'Anonymous Complaint' : text, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Category: $category'),
-                      Text('Status: $status'),
-                      if (adminReply != null) Text('Admin reply: ${adminReply.toString()}'),
-                      if (isAnon) const Text('(Submitted Anonymously)'),
-                      if (timeStr.isNotEmpty) Text('Submitted: $timeStr', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    ],
+                  title: Text(data['text'] ?? 'No text'),
+                  subtitle: Text(
+                    "Category: ${data['category'] ?? 'Unknown'}\n"
+                    "Status: ${data['status'] ?? 'Pending'}\n"
+                    "Date: ${date != null ? date.toLocal().toString() : 'Unknown'}",
                   ),
                 ),
               );
