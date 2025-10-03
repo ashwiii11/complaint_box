@@ -80,7 +80,7 @@ class _ComplaintFormState extends State<ComplaintForm> {
         padding: const EdgeInsets.all(16.0),
         child: Column(children: [
           DropdownButtonFormField<String>(
-            value: _category,
+            initialValue: _category,
             items: ['Teacher','Hostel','Canteen','Library','Other']
               .map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
             onChanged: (v) => setState(() { _category = v!; }),

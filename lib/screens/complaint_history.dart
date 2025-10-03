@@ -25,7 +25,7 @@ class ComplaintHistory extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('complaints')
             .where('userId', isEqualTo: uid)
-            .orderBy('createdAtMs', descending: true) // use client ms timestamp
+            .orderBy('createdAt', descending: true) // use client ms timestamp
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
