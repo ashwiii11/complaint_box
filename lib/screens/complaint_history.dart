@@ -16,7 +16,7 @@ class ComplaintHistory extends StatelessWidget {
 
     // 🧠 Stream complaints made by the current user (no index issues)
     final complaintsStream = FirebaseFirestore.instance
-        .collection('complaints')
+        .collection('complaint')
         .where('userId', isEqualTo: user.uid)
         .orderBy('timestamp', descending: true) // ✅ must exist in DB
         .snapshots();
