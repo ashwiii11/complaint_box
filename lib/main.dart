@@ -1,11 +1,12 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'screens/login_page.dart';
 import 'screens/home_page.dart';
-import 'screens/admin_dashboard.dart'; // make sure this import is here
-import 'package:cloud_firestore/cloud_firestore.dart'; // needed for FutureBuilder
+import 'screens/admin_dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,68 +21,79 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const beige = Color(0xFFF5F5DC);
+    const lightBrown = Color(0xFFB5651D);
+
     return MaterialApp(
       title: 'Complaint Box',
       debugShowCheckedModeBanner: false,
-
-      // ✅ GLOBAL THEME
       theme: ThemeData(
-         fontFamily: 'sans-serif', // ⛔ no external Roboto
-    primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: const Color(0xFFF5F5DC), // beige
-        primaryColor: const Color(0xFFA0522D), // light brown
-        colorScheme: ColorScheme.fromSwatch().copyWith(
-          primary: const Color(0xFFA0522D), // light brown
-          secondary: const Color(0xFFD2B48C), // tan accent (optional)
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFA0522D), // light brown
-          foregroundColor: Colors.white,
-        ),
+        scaffoldBackgroundColor: beige,
+        primaryColor: lightBrown,
+        colorScheme: ColorScheme.fromSeed(seedColor: lightBrown),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFA0522D), // light brown
+            backgroundColor: lightBrown,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           ),
         ),
+        fontFamily: 'sans-serif', // prevents Roboto web loading error
       ),
+      home: const RootPage(),
+    );
+  }
+}
 
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData) {
-            return const LoginPage();
-          }
+// 🔹 Handles routing based on auth and role
+class RootPage extends StatelessWidget {
+  const RootPage({super.key});
 
-          final user = snapshot.data!;
-          return FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .get(),
-            builder: (context, snap) {
-              if (!snap.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final data = snap.data?.data() as Map<String, dynamic>?;
-              final role = data?['role'] ?? 'user';
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
 
-              if (role == 'admin') {
-                return AdminDashboard();
-              } else {
-                return const HomePage();
-              }
-            },
-          );
-        },
-      ),
+        // not logged in → login page
+        if (!snapshot.hasData) {
+          return const LoginPage();
+        }
+
+        final user = snapshot.data!;
+        return FutureBuilder<DocumentSnapshot>(
+          future:
+              FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+          builder: (context, userSnap) {
+            if (userSnap.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()));
+            }
+
+            // fallback in case user doc missing
+            if (!userSnap.hasData || !userSnap.data!.exists) {
+              return const HomePage();
+            }
+
+            final data = userSnap.data!.data() as Map<String, dynamic>? ?? {};
+            final role = data['role'] ?? 'user';
+
+            // route by role
+            if (role == 'admin') {
+              return AdminDashboard(); // ✅ non-const call
+            } else {
+              return const HomePage();
+            }
+          },
+        );
+      },
     );
   }
 }
