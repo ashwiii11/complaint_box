@@ -42,7 +42,7 @@ class _ComplaintFormState extends State<ComplaintForm> {
         'status': 'pending',
         'adminReply': null,
         'createdAtMs': nowMs,
-        'serverTimestamp': FieldValue.serverTimestamp(),
+        'timestamp': FieldValue.serverTimestamp(),
       };
 
       await FirebaseFirestore.instance.collection('complaints').add(data);
