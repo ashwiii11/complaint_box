@@ -26,6 +26,8 @@ class MyApp extends StatelessWidget {
 
       // ✅ GLOBAL THEME
       theme: ThemeData(
+         fontFamily: 'sans-serif', // ⛔ no external Roboto
+    primarySwatch: Colors.blue,
         scaffoldBackgroundColor: const Color(0xFFF5F5DC), // beige
         primaryColor: const Color(0xFFA0522D), // light brown
         colorScheme: ColorScheme.fromSwatch().copyWith(
