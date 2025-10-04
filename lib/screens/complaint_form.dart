@@ -53,7 +53,7 @@ class _ComplaintFormState extends State<ComplaintForm> {
         'createdAtMs': now, // optional for local sorting
       };
 
-      await _firestore.collection('complaints').add(complaintData);
+      await _firestore.collection('complaint').add(complaintData);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Complaint submitted successfully!')),
