@@ -1,4 +1,3 @@
-// lib/screens/complaint_form.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,12 +27,10 @@ class _ComplaintFormState extends State<ComplaintForm> {
       return;
     }
 
-    setState(() {
-      _submitting = true;
-    });
-
+    setState(() => _submitting = true);
     final uid = user.uid;
     final email = user.isAnonymous ? null : user.email;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
 
     try {
       final data = {
@@ -44,66 +41,86 @@ class _ComplaintFormState extends State<ComplaintForm> {
         'isAnonymous': _isAnonymous,
         'status': 'pending',
         'adminReply': null,
-        'createdAt': FieldValue.serverTimestamp(), // ✅ unified timestamp
+        'createdAtMs': nowMs,
+        'serverTimestamp': FieldValue.serverTimestamp(),
       };
 
       await FirebaseFirestore.instance.collection('complaints').add(data);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Complaint submitted ✅')),
+        const SnackBar(content: Text('✅ Complaint submitted')),
       );
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('❌ Error: $e')));
     } finally {
-      setState(() {
-        _submitting = false;
-      });
+      setState(() => _submitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('New Complaint')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            DropdownButtonFormField<String>(
-              value: _category,
-              items: ['Teacher', 'Hostel', 'Canteen', 'Library', 'Other']
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
-              onChanged: (v) => setState(() => _category = v!),
-              decoration: const InputDecoration(labelText: 'Category'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _textCtl,
-              maxLines: 6,
-              decoration: const InputDecoration(labelText: 'Write your complaint'),
-            ),
-            Row(
-              children: [
-                Checkbox(
-                  value: _isAnonymous,
-                  onChanged: (v) => setState(() => _isAnonymous = v ?? false),
+      backgroundColor: const Color(0xFFF5F5DC), // beige
+      appBar: AppBar(
+        title: const Text('New Complaint'),
+        backgroundColor: const Color(0xFFA67B5B), // light brown
+      ),
+      body: Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          width: 400,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: _category,
+                items: ['Teacher', 'Hostel', 'Canteen', 'Library', 'Other']
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => setState(() => _category = v!),
+                decoration: const InputDecoration(labelText: 'Category'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _textCtl,
+                maxLines: 5,
+                decoration:
+                    const InputDecoration(labelText: 'Write your complaint'),
+              ),
+              Row(
+                children: [
+                  Checkbox(
+                    value: _isAnonymous,
+                    onChanged: (v) => setState(() => _isAnonymous = v ?? false),
+                  ),
+                  const Text('Submit anonymously'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFA67B5B),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                 ),
-                const Text('Submit anonymously'),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _submitting ? null : _submit,
-              child: _submitting
-                  ? const CircularProgressIndicator()
-                  : const Text('Submit Complaint'),
-            ),
-          ],
+                onPressed: _submitting ? null : _submit,
+                child: _submitting
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Submit Complaint',
+                        style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
         ),
       ),
     );

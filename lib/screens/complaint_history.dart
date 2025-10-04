@@ -1,4 +1,3 @@
-// lib/screens/complaint_history.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,46 +11,66 @@ class ComplaintHistory extends StatelessWidget {
 
     if (uid == null) {
       return const Scaffold(
-        body: Center(child: Text("Not logged in ❌")),
+        body: Center(child: Text("Not logged in")),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("My Complaints")),
+      backgroundColor: const Color(0xFFF5F5DC), // beige background
+      appBar: AppBar(
+        title: const Text("My Complaints"),
+        backgroundColor: const Color(0xFFA67B5B),
+      ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
             .collection('complaints')
             .where('userId', isEqualTo: uid)
-            .orderBy('createdAt', descending: true) // ✅ unified field
+            .orderBy('createdAtMs', descending: true) // ✅ correct field
             .snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+                child: Text('Error: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red)));
+          }
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+
+          final docs = snapshot.data?.docs ?? [];
+          if (docs.isEmpty) {
             return const Center(child: Text("No complaints yet."));
           }
 
-          final complaints = snapshot.data!.docs;
-
           return ListView.builder(
-            itemCount: complaints.length,
+            padding: const EdgeInsets.all(12),
+            itemCount: docs.length,
             itemBuilder: (context, index) {
-              final data = complaints[index].data();
-              final timestamp = data['createdAt'] as Timestamp?;
-              final date = timestamp != null
-                  ? DateTime.fromMillisecondsSinceEpoch(
-                      timestamp.millisecondsSinceEpoch)
-                  : null;
+              final data = docs[index].data();
+              final text = data['text'] ?? 'No text';
+              final status = data['status'] ?? 'Pending';
+              final category = data['category'] ?? 'General';
+              final reply = data['adminReply'];
 
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                color: Colors.white,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                elevation: 3,
                 child: ListTile(
-                  title: Text(data['text'] ?? 'No text'),
-                  subtitle: Text(
-                    "Category: ${data['category'] ?? 'Unknown'}\n"
-                    "Status: ${data['status'] ?? 'Pending'}\n"
-                    "Date: ${date != null ? date.toLocal().toString() : 'Unknown'}",
+                  title: Text(text,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Category: $category"),
+                      Text("Status: $status"),
+                      if (reply != null)
+                        Text("Admin Reply: $reply",
+                            style: const TextStyle(color: Colors.green)),
+                    ],
                   ),
                 ),
               );
