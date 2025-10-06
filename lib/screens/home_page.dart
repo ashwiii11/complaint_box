@@ -25,18 +25,41 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _checkAdmin() async {
-    final uid = _authSvc.currentUser?.uid;
-    if (uid == null) {
-      setState(() { _isAdmin = false; _loading = false; });
-      return;
-    }
-    final snap = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    final data = snap.data();
+  final uid = _authSvc.currentUser?.uid;
+
+  // If no user is logged in
+  if (uid == null) {
     setState(() {
-      _isAdmin = (data != null && data['role'] == 'admin');
+      _isAdmin = false;
       _loading = false;
     });
+    return;
   }
+
+  try {
+    final snap = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+    if (snap.exists) {
+      final data = snap.data();
+      _isAdmin = (data != null && data['role'] == 'admin');
+    } else {
+      // Create a user entry if missing (default = normal user)
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'role': 'user',
+        'email': _authSvc.currentUser?.email ?? 'anonymous',
+      });
+      _isAdmin = false;
+    }
+  } catch (e) {
+    debugPrint('Error checking admin: $e');
+    _isAdmin = false;
+  }
+
+  setState(() {
+    _loading = false;
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {
