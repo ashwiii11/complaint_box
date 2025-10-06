@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import 'complaint_form.dart';
 import 'complaint_history.dart';
 import 'admin_dashboard.dart';
+import 'suggestion_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -67,6 +68,14 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ComplaintHistory())),
                   child: const Text('My Complaints'),
                 ),
+                  ElevatedButton(
+                   onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SuggestionsPage()),
+          ),
+  child: const Text('Suggestions Counter'),
+),
+
                 if (_isAdmin) ...[
                   const SizedBox(height: 12),
                   ElevatedButton(
