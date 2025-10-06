@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import 'complaint_form.dart';
-import 'complaint_history.dart';
-import 'admin_dashboard.dart';
 import 'suggestion_page.dart';
+import 'admin_dashboard.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,7 +14,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _authSvc = AuthService();
-  bool _isAdmin = false;  
+  bool _isAdmin = false;
   bool _loading = true;
 
   @override
@@ -25,44 +24,45 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _checkAdmin() async {
-  final uid = _authSvc.currentUser?.uid;
+    final user = _authSvc.currentUser;
+    if (user == null) {
+      setState(() {
+        _isAdmin = false;
+        _loading = false;
+      });
+      return;
+    }
 
-  // If no user is logged in
-  if (uid == null) {
-    setState(() {
-      _isAdmin = false;
-      _loading = false;
-    });
-    return;
-  }
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
-  try {
-    final snap = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-
-    if (snap.exists) {
-      final data = snap.data();
-      _isAdmin = (data != null && data['role'] == 'admin');
+    if (doc.exists) {
+      final data = doc.data();
+      _isAdmin = data?['role'] == 'admin';
     } else {
-      // Create a user entry if missing (default = normal user)
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'email': user.email ?? 'anonymous',
         'role': 'user',
-        'email': _authSvc.currentUser?.email ?? 'anonymous',
       });
       _isAdmin = false;
     }
-  } catch (e) {
-    debugPrint('Error checking admin: $e');
-    _isAdmin = false;
+
+    setState(() {
+      _loading = false;
+    });
   }
-
-  setState(() {
-    _loading = false;
-  });
-}
-
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return _isAdmin ? const AdminDashboard() : _buildUserHome(context);
+  }
+
+  Widget _buildUserHome(BuildContext context) {
     final user = _authSvc.currentUser;
     return Scaffold(
       appBar: AppBar(
@@ -72,42 +72,34 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await _authSvc.signOut();
-              // authStateChanges stream in main will redirect to LoginPage
             },
-          )
+          ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text('Welcome ${user?.isAnonymous == true ? "Guest" : user?.email ?? ''}'),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ComplaintForm())),
-                  child: const Text('Write Complaint'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ComplaintHistory())),
-                  child: const Text('My Complaints'),
-                ),
-                  ElevatedButton(
-                   onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SuggestionsPage()),
-          ),
-  child: const Text('Suggestions Counter'),
-),
-
-                if (_isAdmin) ...[
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AdminDashboard())),
-                    child: const Text('Admin Dashboard'),
-                  ),
-                ],
-              ]),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Welcome ${user?.email ?? "Guest"}'),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ComplaintForm()),
+              ),
+              child: const Text('Write a Complaint'),
             ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SuggestionsPage()),
+              ),
+              child: const Text('Suggestion Counter'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

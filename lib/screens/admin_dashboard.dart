@@ -1,60 +1,96 @@
 // lib/screens/admin_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/db_service.dart';
-
 
 class AdminDashboard extends StatelessWidget {
-  AdminDashboard({super.key});
-  final DBService _db = DBService();
+  const AdminDashboard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Admin Dashboard')),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _db.allComplaintsStream(),
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          if (!snap.hasData || snap.data!.docs.isEmpty) return const Center(child: Text('No complaints yet.'));
-          final docs = snap.data!.docs;
-          return ListView.builder(
-            itemCount: docs.length,
-            itemBuilder: (context, i) {
-              final doc = docs[i];
-              final d = doc.data() as Map<String, dynamic>;
-              final status = d['status'] ?? 'pending';
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: ListTile(
-                  title: Text(d['category'] ?? ''),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(d['text'] ?? ''),
-                      const SizedBox(height: 6),
-                      if (d['userEmail'] != null) Text('From: ${d['userEmail']}'),
-                      if (d['isAnonymous'] == true) const Text('Submitted anonymously'),
-                    ],
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (v) {
-                      if (v == 'resolve') {
-                        _db.updateComplaint(doc.id, {'status': 'resolved'});
-                      } else if (v == 'pending') {
-                        _db.updateComplaint(doc.id, {'status': 'pending'});
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'resolve', child: Text('Mark Resolved')),
-                      const PopupMenuItem(value: 'pending', child: Text('Mark Pending')),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
+    final complaints = FirebaseFirestore.instance
+        .collection('complaints')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+
+    final suggestions = FirebaseFirestore.instance
+        .collection('suggestions')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Admin Dashboard'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Complaints'),
+              Tab(text: 'Suggestions'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            // Complaints Tab
+            StreamBuilder(
+              stream: complaints,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text('No complaints yet.'));
+                }
+
+                final docs = snapshot.data!.docs;
+                return ListView.builder(
+                  itemCount: docs.length,
+                  itemBuilder: (context, i) {
+                    final c = docs[i].data() as Map<String, dynamic>;
+                    return Card(
+                      margin: const EdgeInsets.all(8),
+                      child: ListTile(
+                        title: Text(c['text'] ?? ''),
+                        subtitle: Text(
+                          "From: ${c['isAnonymous'] == true ? 'Anonymous' : c['userEmail'] ?? 'Unknown'}\n"
+                          "Status: ${c['status'] ?? 'pending'}",
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+
+            // Suggestions Tab
+            StreamBuilder(
+              stream: suggestions,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text('No suggestions yet.'));
+                }
+
+                final docs = snapshot.data!.docs;
+                return ListView.builder(
+                  itemCount: docs.length,
+                  itemBuilder: (context, i) {
+                    final s = docs[i].data() as Map<String, dynamic>;
+                    return Card(
+                      margin: const EdgeInsets.all(8),
+                      child: ListTile(
+                        title: Text(s['text'] ?? ''),
+                        subtitle: Text("By: ${s['userId'] ?? 'Unknown'}"),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
