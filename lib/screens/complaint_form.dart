@@ -1,105 +1,93 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 
-class ComplaintFormPage extends StatefulWidget {
-  const ComplaintFormPage({Key? key}) : super(key: key);
+class ComplaintForm extends StatefulWidget {
+  const ComplaintForm({super.key});
 
   @override
-  State<ComplaintFormPage> createState() => _ComplaintFormPageState();
+  State<ComplaintForm> createState() => _ComplaintFormState();
 }
 
-class _ComplaintFormPageState extends State<ComplaintFormPage> {
-  final _controller = TextEditingController();
-  String _category = 'General';
+class _ComplaintFormState extends State<ComplaintForm> {
+  final _auth = AuthService();
+  final _formKey = GlobalKey<FormState>();
+  String _category = 'Hostel';
+  String _text = '';
   bool _isAnonymous = false;
-  bool _isLoading = false;
+  bool _loading = false;
 
   Future<void> _submitComplaint() async {
-    if (_controller.text.trim().isEmpty) return;
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
 
-    setState(() => _isLoading = true);
+    setState(() => _loading = true);
+    final uid = _auth.currentUser?.uid ?? 'anonymous';
+    final data = {
+      'userId': _isAnonymous ? 'anonymous' : uid,
+      'category': _category,
+      'text': _text,
+      'isAnonymous': _isAnonymous,
+      'status': 'pending',
+      'adminReply': null,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
 
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      final uid = user?.uid ?? 'unknown';
-      final email = user?.email;
+    await FirebaseFirestore.instance.collection('complaints').add(data);
+    setState(() => _loading = false);
 
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
-
-      final data = {
-        'userId': uid,
-        'userEmail': _isAnonymous ? null : email,
-        'category': _category,
-        'text': _controller.text.trim(),
-        'isAnonymous': _isAnonymous,
-        'status': 'pending',
-        'adminReply': null,
-        'createdAtMs': nowMs,
-        'serverTimestamp': FieldValue.serverTimestamp(),
-      };
-
-      await FirebaseFirestore.instance.collection('complaints').add(data);
-
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✅ Complaint submitted successfully!')),
       );
-
-      _controller.clear();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error: $e')),
-      );
+      Navigator.pop(context);
     }
-
-    setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Submit Complaint')),
+      appBar: AppBar(title: const Text('Write Complaint')),
       body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Category:'),
-            DropdownButton<String>(
-              value: _category,
-              onChanged: (value) => setState(() => _category = value!),
-              items: const [
-                DropdownMenuItem(value: 'General', child: Text('General')),
-                DropdownMenuItem(value: 'Maintenance', child: Text('Maintenance')),
-                DropdownMenuItem(value: 'Academics', child: Text('Academics')),
-              ],
-            ),
-            TextField(
-              controller: _controller,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Enter your complaint',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            Row(
-              children: [
-                Checkbox(
-                  value: _isAnonymous,
-                  onChanged: (v) => setState(() => _isAnonymous = v!),
+        padding: const EdgeInsets.all(16.0),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : Form(
+                key: _formKey,
+                child: ListView(
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: _category,
+                      items: ['Hostel', 'Canteen', 'Campus', 'Academics']
+                          .map((c) => DropdownMenuItem(
+                                value: c,
+                                child: Text(c),
+                              ))
+                          .toList(),
+                      onChanged: (v) => setState(() => _category = v!),
+                      decoration: const InputDecoration(labelText: 'Category'),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      maxLines: 3,
+                      decoration: const InputDecoration(labelText: 'Complaint Text'),
+                      validator: (v) => v == null || v.isEmpty ? 'Enter complaint text' : null,
+                      onSaved: (v) => _text = v!,
+                    ),
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      title: const Text('Submit anonymously'),
+                      value: _isAnonymous,
+                      onChanged: (v) => setState(() => _isAnonymous = v),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _submitComplaint,
+                      child: const Text('Submit Complaint'),
+                    ),
+                  ],
                 ),
-                const Text('Submit anonymously')
-              ],
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _submitComplaint,
-              child: _isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text('Submit Complaint'),
-            ),
-          ],
-        ),
+              ),
       ),
     );
   }
