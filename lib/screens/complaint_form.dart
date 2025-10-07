@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lottie/lottie.dart';
-import '../services/auth_service.dart';
+import '../services/db_service.dart';
 
 class ComplaintForm extends StatefulWidget {
   const ComplaintForm({super.key});
@@ -10,125 +11,120 @@ class ComplaintForm extends StatefulWidget {
   State<ComplaintForm> createState() => _ComplaintFormState();
 }
 
-class _ComplaintFormState extends State<ComplaintForm>
-    with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _complaintController = TextEditingController();
-  final _auth = AuthService();
+class _ComplaintFormState extends State<ComplaintForm> {
+  final _textCtl = TextEditingController();
+  String _category = 'Hostel';
+  bool _isAnonymous = false;
+  final _db = DBService();
+  final _auth = FirebaseAuth.instance;
   bool _submitting = false;
-  bool _showAnimation = false;
+  bool _showAnimation = false; // 👈 new state
 
-  Future<void> _submitComplaint() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _submit() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in first')),
+      );
+      return;
+    }
 
     setState(() {
       _submitting = true;
     });
 
-    final user = _auth.currentUser;
-    await FirebaseFirestore.instance.collection('complaints').add({
-      'userId': user?.uid,
-      'email': user?.email ?? 'Anonymous',
-      'text': _complaintController.text.trim(),
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+    try {
+      final uid = user.uid;
+      final email = user.isAnonymous ? null : user.email;
 
-    setState(() {
-      _submitting = false;
-      _showAnimation = true;
-    });
-
-    // Play animation for 2 seconds before showing success
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      setState(() {
-        _showAnimation = false;
+      await _db.addComplaint({
+        'userId': _isAnonymous ? 'anonymous' : uid,
+        'userEmail': _isAnonymous ? null : email,
+        'category': _category,
+        'text': _textCtl.text.trim(),
+        'isAnonymous': _isAnonymous,
+        'status': 'pending',
+        'adminReply': null,
+        'timestamp': FieldValue.serverTimestamp(),
       });
-      _complaintController.clear();
 
+      setState(() {
+        _showAnimation = true; // 👈 Show Lottie animation
+      });
+
+      await Future.delayed(const Duration(seconds: 3)); // Wait for animation
+      if (!mounted) return;
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("✅ Complaint submitted successfully!"),
-          behavior: SnackBarBehavior.floating,
-        ),
+        const SnackBar(content: Text('Complaint submitted successfully!')),
       );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() {
+        _submitting = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Write Complaint"),
-        backgroundColor: Colors.deepPurpleAccent,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF7F00FF), Color(0xFFE100FF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Center(
-          child: _showAnimation
-              ? Lottie.asset('assets/complaint_drop.json', repeat: false)
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
-                    elevation: 8,
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              "Write your complaint below 👇",
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 20),
-                            TextFormField(
-                              controller: _complaintController,
-                              maxLines: 6,
-                              decoration: InputDecoration(
-                                hintText: "Type your complaint here...",
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                              ),
-                              validator: (v) => v == null || v.isEmpty
-                                  ? "Please enter a complaint"
-                                  : null,
-                            ),
-                            const SizedBox(height: 20),
-                            ElevatedButton.icon(
-                              onPressed: _submitting ? null : _submitComplaint,
-                              icon: const Icon(Icons.send),
-                              label: _submitting
-                                  ? const CircularProgressIndicator(
-                                      color: Colors.white)
-                                  : const Text("Submit"),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepPurpleAccent,
-                                minimumSize: const Size.fromHeight(50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+      appBar: AppBar(title: const Text('New Complaint')),
+      body: Center(
+        child: _showAnimation
+            ? Lottie.asset(
+                'assets/animations/complaint_box.json',
+                repeat: false,
+                width: 250,
+                height: 250,
+              )
+            : Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: _category,
+                      items: ['Teacher', 'Hostel', 'Canteen', 'Library', 'Other']
+                          .map((c) =>
+                              DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (v) =>
+                          setState(() => _category = v ?? 'Hostel'),
+                      decoration:
+                          const InputDecoration(labelText: 'Category'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _textCtl,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        labelText: 'Write your complaint',
+                        border: OutlineInputBorder(),
                       ),
                     ),
-                  ),
+                    Row(
+                      children: [
+                        Checkbox(
+                            value: _isAnonymous,
+                            onChanged: (v) =>
+                                setState(() => _isAnonymous = v ?? false)),
+                        const Text('Submit anonymously'),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _submitting ? null : _submit,
+                      child: _submitting
+                          ? const CircularProgressIndicator()
+                          : const Text('Submit Complaint'),
+                    ),
+                  ],
                 ),
-        ),
+              ),
       ),
     );
   }
