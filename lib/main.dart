@@ -58,8 +58,7 @@ class RootPage extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-              body: Center(child: CircularProgressIndicator()));
+          return const Center(child: CircularProgressIndicator());
         }
 
         // not logged in → login page
@@ -71,27 +70,26 @@ class RootPage extends StatelessWidget {
         return FutureBuilder<DocumentSnapshot>(
           future:
               FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
-          builder: (context, userSnap) {
-            if (userSnap.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()));
+          builder: (context, snap) {
+            if (snap.hasData) {
+              return const Center(child: CircularProgressIndicator());
             }
 
             // fallback in case user doc missing
-            if (!userSnap.hasData || !userSnap.data!.exists) {
+            if (!snap.hasData || !snap.data!.exists) {
               return const HomePage();
             }
 
-            final data = userSnap.data!.data() as Map<String, dynamic>? ?? {};
-            final role = data['role'] ?? 'user';
+            final data = snap.data?.data() as Map<String, dynamic>?;
+            final role = data?['role'] ?? 'user';
 
             // route by role
-            if (role == 'admin') {
-              return AdminDashboard(); // ✅ non-const call
-            } else {
-              return const HomePage();
-            }
-          },
+            return role == 'admin' 
+               ?AdminDashboard() // ✅ non-const call
+            
+              : const HomePage();
+            },
+          
         );
       },
     );
