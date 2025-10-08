@@ -41,14 +41,13 @@ class MyApp extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           ),
         ),
-        fontFamily: 'sans-serif', // prevents Roboto web loading error
+        fontFamily: 'sans-serif', // avoids Roboto load issue
       ),
       home: const RootPage(),
     );
   }
 }
 
-// 🔹 Handles routing based on auth and role
 class RootPage extends StatelessWidget {
   const RootPage({super.key});
 
@@ -57,25 +56,26 @@ class RootPage extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+        // Waiting for auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        // not logged in → login page
+        // User not logged in → show login page
         if (!snapshot.hasData) {
           return const LoginPage();
         }
 
+        // Logged in → get role from Firestore
         final user = snapshot.data!;
         return FutureBuilder<DocumentSnapshot>(
-          future:
-              FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+          future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
           builder: (context, snap) {
-            if (snap.hasData) {
+            if (snap.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            // fallback in case user doc missing
+            // Fallback if user document missing
             if (!snap.hasData || !snap.data!.exists) {
               return const HomePage();
             }
@@ -83,13 +83,11 @@ class RootPage extends StatelessWidget {
             final data = snap.data?.data() as Map<String, dynamic>?;
             final role = data?['role'] ?? 'user';
 
-            // route by role
-            return role == 'admin' 
-               ?AdminDashboard() // ✅ non-const call
-            
-              : const HomePage();
-            },
-          
+            // Route by role
+            return role == 'admin'
+                ? const AdminDashboard()
+                : const HomePage();
+          },
         );
       },
     );
