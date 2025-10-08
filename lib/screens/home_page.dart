@@ -8,7 +8,6 @@ import 'suggestion_page.dart';
 import 'admin_dashboard.dart';
 import 'login_page.dart';
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
   @override
@@ -67,7 +66,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
     }
 
-    return _isAdmin ? const AdminDashboard() : FadeTransition(opacity: _fadeAnimation, child: _buildUserHome(context));
+    return _isAdmin
+        ? const AdminDashboard()
+        : FadeTransition(opacity: _fadeAnimation, child: _buildUserHome(context));
   }
 
   Widget _buildUserHome(BuildContext context) {
@@ -76,27 +77,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-  title: const Text('Complaint Box'),
-  actions: [
-    IconButton(
-  icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 26),
-  onPressed: () async {
-    await FirebaseAuth.instance.signOut();
-    if (context.mounted) {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const LoginPage(),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
-        ),
-      );
-    }
-  },
-)
-
-  ],
-),
-
+        title: const Text('Complaint Box'),
+      ),
       body: Container(
         width: double.infinity,
         decoration: const BoxDecoration(
@@ -168,6 +150,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       color: Colors.redAccent,
                       onTap: () async {
                         await _authSvc.signOut();
+                        if (context.mounted) {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginPage()),
+                            (route) => false,
+                          );
+                        }
                       },
                     ),
                   ],
