@@ -113,7 +113,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       title: "Write Complaint",
                       icon: Icons.edit_note_rounded,
                       color: Colors.deepOrangeAccent,
-                      onTap: () => _navigateWithSlide(context, const ComplaintFormPage()),
+                      onTap: () => _navigateWithSlide(context, const ComplaintForm()),
                     ),
                     _buildDashboardCard(
                       context,
