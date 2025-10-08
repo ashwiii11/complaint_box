@@ -5,7 +5,7 @@ class AuthService {
 
   User? get currentUser => _auth.currentUser;
 
-  Stream<User?> authStateChanges() => _auth.authStateChanges();
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   Future<UserCredential> signInEmail(String email, String pass) =>
       _auth.signInWithEmailAndPassword(email: email, password: pass);
@@ -16,5 +16,7 @@ class AuthService {
   Future<UserCredential> signInAnonymously() =>
       _auth.signInAnonymously();
 
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
 }

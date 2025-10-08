@@ -84,6 +84,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await _authSvc.signOut();
+              if(!mounted) return;
+              Navigator.of(context).pushNamedAndRemoveUntil('/',(route)=>false);
             },
           ),
         ],
