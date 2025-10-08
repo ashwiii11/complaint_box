@@ -2,9 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'complaint_form.dart';
 import 'suggestion_page.dart';
 import 'admin_dashboard.dart';
+import 'login_page.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -73,23 +76,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          'Complaint Box',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+  title: const Text('Complaint Box'),
+  actions: [
+    IconButton(
+  icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 26),
+  onPressed: () async {
+    await FirebaseAuth.instance.signOut();
+    if (context.mounted) {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const LoginPage(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await _authSvc.signOut();
-              if(!mounted) return;
-              Navigator.of(context).pushNamedAndRemoveUntil('/',(route)=>false);
-            },
-          ),
-        ],
-      ),
+      );
+    }
+  },
+)
+
+  ],
+),
+
       body: Container(
         width: double.infinity,
         decoration: const BoxDecoration(
